@@ -8,11 +8,11 @@ baseurl: '/'
 
 author:
   name: 'MARS'
-  email: MARS
-  twitter_username: MARS
-  facebook_username: MARS
-  github_username:  MARS
-  linkedin_username:  MARS
+  email: 
+  twitter_username: 
+  facebook_username: 
+  github_username:  mars100
+  linkedin_username:  
 
 defaults:
   -
