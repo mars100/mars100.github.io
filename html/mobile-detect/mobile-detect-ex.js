@@ -39,7 +39,7 @@ define(function () {
 
         "Mi": "Mi",
         "Redmi": "Redmi",
-        "HUAWEI": "HUAWEI",
+        "Huawei": "Huawei",
         "Oppo": "Oppo",
         "Vivo": "Vivo",
 
