@@ -1,5 +1,5 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"/>
-<script src="mobile-detect.js"></script>
+<script src="mobile-detect-ex.js"></script>
 <script>
     var md = new MobileDetect(window.navigator.userAgent);
     // ... see below
@@ -19,6 +19,10 @@
     show( md.version('Webkit') );         // 534.3
     show( md.versionStr('Build') );       // '4.1.A.0.562'
     show( md.match('playstation|xbox') ); // false
+
+    show( '' );
+    show( '' );
+    show( navigator.userAgent );
 
 </script>
 
