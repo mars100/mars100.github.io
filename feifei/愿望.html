@@ -1,0 +1,512 @@
+<html>
+    <head>
+        <!-- 新 Bootstrap4 核心 CSS 文件 -->
+        <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/css/bootstrap.min.css">
+
+        <!-- jQuery文件。务必在bootstrap.min.js 之前引入 -->
+        <script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+
+        <!-- 用于弹窗、提示、下拉菜单，包含了 popper.min.js -->
+        <script src="https://cdn.staticfile.org/popper.js/1.15.0/umd/popper.min.js"></script>
+
+        <!-- 最新的 Bootstrap4 核心 JavaScript 文件 -->
+        <script src="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+        <div id="poem1">
+            <h1>一首诗</h1>
+            <p class="main">窗前明月光，疑是地上霜。</p>
+        </div>
+        <div id="poem2">
+            <h1>丘丘</h1>
+            <p class="main">大丘丘，二丘丘，三丘丘，四丘丘。五丘丘，六丘丘。</p>
+        </div>
+        <div>
+        <ul id="list">
+            <li id="1">取雷神</li>
+            <li id="2">买香蕉</li>
+            <li id="3">买苹果</li>
+        </ul>
+        </div>
+        <div class="h2">2022年的flag</div>
+        <ul id="lt">
+            <li>胡桃</li>
+            <li>护魔之杖</li>
+            <li>继续</li>
+        </ul>
+        <div class="btn btn-primary" id="btn">点我添加</div>
+    </body>
+    <script>
+        var list = $("#1")
+        list.html("胡桃")
+        var list = $("#list")
+        list.append("护魔之杖")
+        var btn = $("#btn")
+        var lt = $("#lt")
+        btn.on("click",additem)
+        function additem() {
+            var item = prompt("请输入你的愿望")
+            lt.append("<li>"+item+"</li>")
+        }
+        var h1s = $("h1")
+        h1s.css ('color','yellow')
+        var mains = $(".main")
+        mains.css('color','red')
+        var poem1 = $("#poem1")
+        poem1.css('blackground-color','dark')
+    </script>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
