@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Formatter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #f0f8ff; /* Fresh light blue */
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            max-width: 1400px;
+            margin: 20px auto;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+
+        .panel {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: #4a90e2; /* Softer blue */
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 20px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 16px;
+            resize: none;
+            outline: none;
+            background: #fafcff;
+        }
+
+        #output {
+            padding: 20px;
+            overflow: auto;
+            background: #fafcff;
+            height: 100%;
+        }
+
+        .tree-node {
+            margin-left: 20px;
+        }
+
+        .tree-item {
+            margin: 2px 0;
+            position: relative;
+        }
+
+        .tree-key {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .tree-value {
+            color: #34495e;
+        }
+
+        .tree-string {
+            color: #27ae60;
+        }
+
+        .tree-number {
+            color: #2980b9;
+        }
+
+        .tree-boolean {
+            color: #8e44ad;
+        }
+
+        .tree-null {
+            color: #e74c3c;
+        }
+
+        .collapsible {
+            cursor: pointer;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .collapsible::before {
+            content: '▼';
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .collapsed::before {
+            transform: rotate(-90deg);
+        }
+
+        .hidden-children {
+            display: none;
+        }
+
+        .object-brace, .array-bracket {
+            color: #34495e;
+            font-weight: bold;
+        }
+
+        .comma {
+            color: #34495e;
+        }
+
+        .type-object::before, .type-array::before {
+            content: '"';
+            color: #2c3e50;
+        }
+
+        .type-object::after, .type-array::after {
+            content: '"';
+            color: #2c3e50;
+        }
+
+        .controls {
+            padding: 15px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #eee;
+        }
+
+        button {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #3a7bc8;
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px;
+            display: none;
+        }
+
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .panel {
+                height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">JSON Input</div>
+            <textarea id="json-input" placeholder='Enter JSON here...'>{
+  "name": "John Doe",
+  "age": 35,
+  "isEmployed": true,
+  "address": {
+    "street": "123 Main St",
+    "city": "New York",
+    "zipcode": "10001"
+  },
+  "hobbies": [
+    "reading",
+    "swimming",
+    {
+      "type": "outdoor",
+      "activity": "hiking"
+    }
+  ],
+  "spouse": null
+}</textarea>
+            <div class="controls">
+                <button id="format-btn">Format & Render</button>
+                <button id="clear-btn">Clear</button>
+                <button id="collapse-all">Collapse All</button>
+                <button id="expand-all">Expand All</button>
+            </div>
+            <div id="error-message" class="error"></div>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">Formatted Output</div>
+            <div id="output">
+                <div class="empty-state">Formatted JSON will appear here</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const jsonInput = document.getElementById('json-input');
+            const formatBtn = document.getElementById('format-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const collapseAllBtn = document.getElementById('collapse-all');
+            const expandAllBtn = document.getElementById('expand-all');
+            const output = document.getElementById('output');
+            const errorMessage = document.getElementById('error-message');
+            
+            // Format and render JSON on button click
+            formatBtn.addEventListener('click', renderJSON);
+            
+            // Clear input and output
+            clearBtn.addEventListener('click', function() {
+                jsonInput.value = '';
+                output.innerHTML = '<div class="empty-state">Formatted JSON will appear here</div>';
+                errorMessage.style.display = 'none';
+            });
+            
+            // Collapse all nodes
+            collapseAllBtn.addEventListener('click', function() {
+                const collapsibles = document.querySelectorAll('.collapsible');
+                collapsibles.forEach(collapsible => {
+                    collapsible.classList.add('collapsed');
+                    const children = collapsible.querySelector('.tree-node');
+                    if (children) {
+                        children.classList.add('hidden-children');
+                    }
+                });
+            });
+            
+            // Expand all nodes
+            expandAllBtn.addEventListener('click', function() {
+                const collapsibles = document.querySelectorAll('.collapsible');
+                collapsibles.forEach(collapsible => {
+                    collapsible.classList.remove('collapsed');
+                    const children = collapsible.querySelector('.tree-node');
+                    if (children) {
+                        children.classList.remove('hidden-children');
+                    }
+                });
+            });
+            
+            // Initial render
+            renderJSON();
+            
+            function renderJSON() {
+                errorMessage.style.display = 'none';
+                const jsonString = jsonInput.value.trim();
+                
+                if (!jsonString) {
+                    output.innerHTML = '<div class="empty-state">Enter JSON data and click "Format & Render"</div>';
+                    return;
+                }
+                
+                try {
+                    const jsonData = JSON.parse(jsonString);
+                    output.innerHTML = '';
+                    const tree = createTreeElement(jsonData);
+                    output.appendChild(tree);
+                    attachCollapseHandlers();
+                } catch (e) {
+                    errorMessage.textContent = `Invalid JSON: ${e.message}`;
+                    errorMessage.style.display = 'block';
+                    output.innerHTML = '<div class="empty-state">Invalid JSON format</div>';
+                }
+            }
+            
+            function createTreeElement(data, key = null) {
+                const item = document.createElement('div');
+                item.className = 'tree-item';
+                
+                if (key !== null) {
+                    const keyElement = document.createElement('span');
+                    keyElement.className = 'tree-key';
+                    keyElement.textContent = `"${key}": `;
+                    item.appendChild(keyElement);
+                }
+                
+                if (data === null) {
+                    const valueElement = document.createElement('span');
+                    valueElement.className = 'tree-value tree-null';
+                    valueElement.textContent = 'null';
+                    item.appendChild(valueElement);
+                    return item;
+                }
+                
+                switch (typeof data) {
+                    case 'string':
+                        const stringElement = document.createElement('span');
+                        stringElement.className = 'tree-value tree-string';
+                        stringElement.textContent = `"${data}"`;
+                        item.appendChild(stringElement);
+                        break;
+                        
+                    case 'number':
+                        const numberElement = document.createElement('span');
+                        numberElement.className = 'tree-value tree-number';
+                        numberElement.textContent = data.toString();
+                        item.appendChild(numberElement);
+                        break;
+                        
+                    case 'boolean':
+                        const booleanElement = document.createElement('span');
+                        booleanElement.className = 'tree-value tree-boolean';
+                        booleanElement.textContent = data.toString();
+                        item.appendChild(booleanElement);
+                        break;
+                        
+                    case 'object':
+                        if (Array.isArray(data)) {
+                            if (data.length === 0) {
+                                const emptyElement = document.createElement('span');
+                                emptyElement.className = 'array-bracket';
+                                emptyElement.textContent = '[ ]';
+                                item.appendChild(emptyElement);
+                            } else {
+                                const wrapper = document.createElement('div');
+                                wrapper.className = 'collapsible'; // Expanded by default
+                                
+                                const openBracket = document.createElement('span');
+                                openBracket.className = 'array-bracket';
+                                openBracket.textContent = '[ ';
+                                wrapper.appendChild(openBracket);
+                                
+                                const childrenWrapper = document.createElement('div');
+                                childrenWrapper.className = 'tree-node'; // Visible by default
+                                
+                                data.forEach((value, index) => {
+                                    const isLast = index === data.length - 1;
+                                    const childElement = createTreeElement(value, index);
+                                    
+                                    // Add comma if not last element
+                                    if (!isLast) {
+                                        const comma = document.createElement('span');
+                                        comma.className = 'comma';
+                                        comma.textContent = ',';
+                                        childElement.appendChild(comma);
+                                    }
+                                    
+                                    childrenWrapper.appendChild(childElement);
+                                });
+                                
+                                wrapper.appendChild(childrenWrapper);
+                                
+                                const closeBracket = document.createElement('span');
+                                closeBracket.className = 'array-bracket';
+                                closeBracket.textContent = ' ]';
+                                wrapper.appendChild(closeBracket);
+                                
+                                item.appendChild(wrapper);
+                            }
+                        } else {
+                            const keys = Object.keys(data);
+                            if (keys.length === 0) {
+                                const emptyElement = document.createElement('span');
+                                emptyElement.className = 'object-brace';
+                                emptyElement.textContent = '{ }';
+                                item.appendChild(emptyElement);
+                            } else {
+                                const wrapper = document.createElement('div');
+                                wrapper.className = 'collapsible'; // Expanded by default
+                                
+                                const openBrace = document.createElement('span');
+                                openBrace.className = 'object-brace';
+                                openBrace.textContent = '{ ';
+                                wrapper.appendChild(openBrace);
+                                
+                                const childrenWrapper = document.createElement('div');
+                                childrenWrapper.className = 'tree-node'; // Visible by default
+                                
+                                keys.forEach((objKey, index) => {
+                                    const isLast = index === keys.length - 1;
+                                    const childElement = createTreeElement(data[objKey], objKey);
+                                    
+                                    // Add comma if not last element
+                                    if (!isLast) {
+                                        const comma = document.createElement('span');
+                                        comma.className = 'comma';
+                                        comma.textContent = ',';
+                                        childElement.appendChild(comma);
+                                    }
+                                    
+                                    childrenWrapper.appendChild(childElement);
+                                });
+                                
+                                wrapper.appendChild(childrenWrapper);
+                                
+                                const closeBrace = document.createElement('span');
+                                closeBrace.className = 'object-brace';
+                                closeBrace.textContent = ' }';
+                                wrapper.appendChild(closeBrace);
+                                
+                                item.appendChild(wrapper);
+                            }
+                        }
+                        break;
+                }
+                
+                return item;
+            }
+            
+            function attachCollapseHandlers() {
+                // Use event delegation - attach to output container
+                output.removeEventListener('click', handleCollapse); // Remove previous listener
+                output.addEventListener('click', handleCollapse);
+            }
+            
+            function handleCollapse(e) {
+                // Check if clicked element is a collapsible trigger
+                const collapsible = e.target.closest('.collapsible');
+                if (collapsible) {
+                    e.stopPropagation();
+                    collapsible.classList.toggle('collapsed');
+                    const children = collapsible.querySelector('.tree-node');
+                    if (children) {
+                        children.classList.toggle('hidden-children');
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

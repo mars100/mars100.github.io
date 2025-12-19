@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XML Formatter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #f0f8ff; /* Fresh light blue */
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            max-width: 1400px;
+            margin: 20px auto;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+
+        .panel {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: #4a90e2; /* Softer blue */
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 20px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 16px;
+            resize: none;
+            outline: none;
+            background: #fafcff;
+        }
+
+        #output {
+            padding: 20px;
+            overflow: auto;
+            background: #fafcff;
+            height: 100%;
+        }
+
+        .tree-node {
+            margin-left: 20px;
+        }
+
+        .tree-item {
+            margin: 2px 0;
+            position: relative;
+        }
+
+        .tree-tag {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .tree-attribute-name {
+            color: #8e44ad;
+        }
+
+        .tree-attribute-value {
+            color: #27ae60;
+        }
+
+        .tree-text {
+            color: #34495e;
+        }
+
+        .collapsible {
+            cursor: pointer;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .collapsible::before {
+            content: '▼';
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .collapsed::before {
+            transform: rotate(-90deg);
+        }
+
+        .hidden-children {
+            display: none;
+        }
+
+        .tag-bracket {
+            color: #34495e;
+            font-weight: bold;
+        }
+
+        .controls {
+            padding: 15px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #eee;
+        }
+
+        button {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #3a7bc8;
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px;
+            display: none;
+        }
+
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .panel {
+                height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">XML Input</div>
+            <textarea id="xml-input" placeholder='Enter XML here...'><?xml version="1.0" encoding="UTF-8"?>
+<note>
+    <to>User</to>
+    <from>System</from>
+    <heading>Welcome Message</heading>
+    <body>
+        <message>Hello, welcome to our system!</message>
+        <details>
+            <item importance="high">Please read all instructions carefully</item>
+            <item importance="medium">Contact admin if you need assistance</item>
+        </details>
+    </body>
+</note></textarea>
+            <div class="controls">
+                <button id="format-btn">Format & Render</button>
+                <button id="clear-btn">Clear</button>
+                <button id="collapse-all">Collapse All</button>
+                <button id="expand-all">Expand All</button>
+            </div>
+            <div id="error-message" class="error"></div>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">Formatted Output</div>
+            <div id="output">
+                <div class="empty-state">Formatted XML will appear here</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const xmlInput = document.getElementById('xml-input');
+            const formatBtn = document.getElementById('format-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const collapseAllBtn = document.getElementById('collapse-all');
+            const expandAllBtn = document.getElementById('expand-all');
+            const output = document.getElementById('output');
+            const errorMessage = document.getElementById('error-message');
+            
+            // Format and render XML on button click
+            formatBtn.addEventListener('click', renderXML);
+            
+            // Clear input and output
+            clearBtn.addEventListener('click', function() {
+                xmlInput.value = '';
+                output.innerHTML = '<div class="empty-state">Formatted XML will appear here</div>';
+                errorMessage.style.display = 'none';
+            });
+            
+            // Collapse all nodes
+            collapseAllBtn.addEventListener('click', function() {
+                const collapsibles = document.querySelectorAll('.collapsible');
+                collapsibles.forEach(collapsible => {
+                    collapsible.classList.add('collapsed');
+                    const children = collapsible.querySelector('.tree-node');
+                    if (children) {
+                        children.classList.add('hidden-children');
+                    }
+                });
+            });
+            
+            // Expand all nodes
+            expandAllBtn.addEventListener('click', function() {
+                const collapsibles = document.querySelectorAll('.collapsible');
+                collapsibles.forEach(collapsible => {
+                    collapsible.classList.remove('collapsed');
+                    const children = collapsible.querySelector('.tree-node');
+                    if (children) {
+                        children.classList.remove('hidden-children');
+                    }
+                });
+            });
+            
+            // Initial render
+            renderXML();
+            
+            function renderXML() {
+                errorMessage.style.display = 'none';
+                const xmlString = xmlInput.value.trim();
+                
+                if (!xmlString) {
+                    output.innerHTML = '<div class="empty-state">Enter XML data and click "Format & Render"</div>';
+                    return;
+                }
+                
+                try {
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+                    
+                    // Check for parsing errors
+                    if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+                        throw new Error("Invalid XML format");
+                    }
+                    
+                    output.innerHTML = '';
+                    const tree = createTreeElement(xmlDoc.documentElement);
+                    output.appendChild(tree);
+                    attachCollapseHandlers();
+                } catch (e) {
+                    errorMessage.textContent = `Invalid XML: ${e.message}`;
+                    errorMessage.style.display = 'block';
+                    output.innerHTML = '<div class="empty-state">Invalid XML format</div>';
+                }
+            }
+            
+            function createTreeElement(node) {
+                const item = document.createElement('div');
+                item.className = 'tree-item';
+                
+                // Process element nodes
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'collapsible';
+                    
+                    // Opening tag
+                    const openTag = document.createElement('span');
+                    openTag.className = 'tag-bracket';
+                    openTag.textContent = '<';
+                    wrapper.appendChild(openTag);
+                    
+                    const tagName = document.createElement('span');
+                    tagName.className = 'tree-tag';
+                    tagName.textContent = node.nodeName;
+                    wrapper.appendChild(tagName);
+                    
+                    // Attributes
+                    if (node.attributes.length > 0) {
+                        for (let i = 0; i < node.attributes.length; i++) {
+                            const attr = node.attributes[i];
+                            const attrSpace = document.createTextNode(' ');
+                            wrapper.appendChild(attrSpace);
+                            
+                            const attrName = document.createElement('span');
+                            attrName.className = 'tree-attribute-name';
+                            attrName.textContent = attr.name;
+                            wrapper.appendChild(attrName);
+                            
+                            const equals = document.createTextNode('=');
+                            wrapper.appendChild(equals);
+                            
+                            const attrValue = document.createElement('span');
+                            attrValue.className = 'tree-attribute-value';
+                            attrValue.textContent = `"${attr.value}"`;
+                            wrapper.appendChild(attrValue);
+                        }
+                    }
+                    
+                    const closeBracket = document.createElement('span');
+                    closeBracket.className = 'tag-bracket';
+                    closeBracket.textContent = '>';
+                    wrapper.appendChild(closeBracket);
+                    
+                    // Children
+                    if (node.childNodes.length > 0) {
+                        const childrenWrapper = document.createElement('div');
+                        childrenWrapper.className = 'tree-node';
+                        
+                        let hasElementChildren = false;
+                        for (let i = 0; i < node.childNodes.length; i++) {
+                            const child = node.childNodes[i];
+                            
+                            // Skip text nodes that are only whitespace
+                            if (child.nodeType === Node.TEXT_NODE && child.textContent.trim() === '') {
+                                continue;
+                            }
+                            
+                            if (child.nodeType === Node.ELEMENT_NODE) {
+                                hasElementChildren = true;
+                                const childElement = createTreeElement(child);
+                                childrenWrapper.appendChild(childElement);
+                            } else if (child.nodeType === Node.TEXT_NODE) {
+                                const textElement = document.createElement('div');
+                                textElement.className = 'tree-item';
+                                
+                                const textSpan = document.createElement('span');
+                                textSpan.className = 'tree-text';
+                                textSpan.textContent = child.textContent.trim();
+                                textElement.appendChild(textSpan);
+                                
+                                childrenWrapper.appendChild(textElement);
+                            }
+                        }
+                        
+                        // Only add children wrapper if there are actual element children
+                        if (hasElementChildren || node.childNodes.length > 0) {
+                            wrapper.appendChild(childrenWrapper);
+                        }
+                        
+                        // Closing tag
+                        const closingTag = document.createElement('div');
+                        closingTag.className = 'tree-item';
+                        
+                        const closeOpen = document.createElement('span');
+                        closeOpen.className = 'tag-bracket';
+                        closeOpen.textContent = '</';
+                        closingTag.appendChild(closeOpen);
+                        
+                        const closeTagName = document.createElement('span');
+                        closeTagName.className = 'tree-tag';
+                        closeTagName.textContent = node.nodeName;
+                        closingTag.appendChild(closeTagName);
+                        
+                        const closeClose = document.createElement('span');
+                        closeClose.className = 'tag-bracket';
+                        closeClose.textContent = '>';
+                        closingTag.appendChild(closeClose);
+                        
+                        wrapper.appendChild(closingTag);
+                    } else {
+                        // Self-closing tag
+                        const slash = document.createElement('span');
+                        slash.className = 'tag-bracket';
+                        slash.textContent = '/';
+                        wrapper.appendChild(slash);
+                        
+                        const finalBracket = document.createElement('span');
+                        finalBracket.className = 'tag-bracket';
+                        finalBracket.textContent = '>';
+                        wrapper.appendChild(finalBracket);
+                    }
+                    
+                    item.appendChild(wrapper);
+                }
+                
+                return item;
+            }
+            
+            function attachCollapseHandlers() {
+                // Use event delegation - attach to output container
+                output.removeEventListener('click', handleCollapse); // Remove previous listener
+                output.addEventListener('click', handleCollapse);
+            }
+            
+            function handleCollapse(e) {
+                // Check if clicked element is a collapsible trigger
+                const collapsible = e.target.closest('.collapsible');
+                if (collapsible) {
+                    e.stopPropagation();
+                    collapsible.classList.toggle('collapsed');
+                    const children = collapsible.querySelector('.tree-node');
+                    if (children) {
+                        children.classList.toggle('hidden-children');
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
