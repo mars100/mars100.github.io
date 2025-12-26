@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV/JSON 文件查看器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+        }
+        
+        .upload-area {
+            border: 3px dashed #3498db;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background-color: rgba(52, 152, 219, 0.05);
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover, .upload-area.dragover {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-color: #2980b9;
+        }
+        
+        .upload-icon {
+            font-size: 60px;
+            color: #3498db;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-size: 1.5rem;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            color: #7f8c8d;
+        }
+        
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin: 10px 5px;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: auto;
+            margin-top: 20px;
+            display: none;
+            max-height: 70vh;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            min-width: 800px; /* 确保表格有最小宽度以显示所有列 */
+        }
+        
+        th {
+            background-color: #3498db;
+            color: white;
+            text-align: left;
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            min-width: 150px; /* 设置最小列宽 */
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+            min-width: 150px; /* 设置最小列宽 */
+            word-wrap: break-word; /* 长内容自动换行 */
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        
+        .json-preview {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            max-height: 100px;
+            overflow: auto;
+            white-space: pre-wrap;
+            cursor: pointer;
+        }
+        
+        .json-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+        
+        .json-formatted {
+            font-family: monospace;
+            white-space: pre;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            overflow: auto;
+        }
+        
+        .error-message {
+            background-color: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-area {
+                padding: 20px;
+            }
+            
+            table {
+                font-size: 0.8rem;
+                min-width: 600px;
+            }
+            
+            th, td {
+                padding: 8px;
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CSV/JSON 文件查看器</h1>
+            <p class="subtitle">上传CSV文件并查看内容，支持JSON格式单元格的格式化显示</p>
+        </header>
+        
+        <div class="upload-area" id="dropArea">
+            <div class="upload-icon">📁</div>
+            <p class="upload-text">拖拽文件到此处或点击选择文件</p>
+            <p>支持 CSV 和 JSON 文件</p>
+            <input type="file" id="fileInput" accept=".csv,.json" style="display: none;">
+            <button class="btn" id="browseBtn">选择文件</button>
+            <div class="file-info" id="fileInfo"></div>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="table-container" id="tableContainer">
+            <table id="dataTable">
+                <thead id="tableHeader"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="json-modal" id="jsonModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>JSON 格式化预览</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="json-formatted" id="formattedJson"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('fileInput');
+            const browseBtn = document.getElementById('browseBtn');
+            const dropArea = document.getElementById('dropArea');
+            const fileInfo = document.getElementById('fileInfo');
+            const tableContainer = document.getElementById('tableContainer');
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            const errorMessage = document.getElementById('errorMessage');
+            const jsonModal = document.getElementById('jsonModal');
+            const formattedJson = document.getElementById('formattedJson');
+            const closeModal = document.querySelector('.close-btn');
+            
+            // 点击选择文件
+            browseBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            // 文件选择事件
+            fileInput.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    handleFile(this.files[0]);
+                }
+            });
+            
+            // 拖拽事件
+            dropArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+            
+            dropArea.addEventListener('dragleave', function() {
+                this.classList.remove('dragover');
+            });
+            
+            dropArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // 关闭JSON模态框
+            closeModal.addEventListener('click', () => {
+                jsonModal.style.display = 'none';
+            });
+            
+            // 点击模态框外部关闭
+            window.addEventListener('click', (e) => {
+                if (e.target === jsonModal) {
+                    jsonModal.style.display = 'none';
+                }
+            });
+            
+            // 处理文件
+            function handleFile(file) {
+                // 检查文件类型
+                const fileName = file.name.toLowerCase();
+                if (!fileName.endsWith('.csv') && !fileName.endsWith('.json')) {
+                    showError('请上传 CSV 或 JSON 文件');
+                    return;
+                }
+                
+                fileInfo.textContent = `已选择: ${file.name} (${formatFileSize(file.size)})`;
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        if (fileName.endsWith('.csv')) {
+                            processCsv(e.target.result);
+                        } else if (fileName.endsWith('.json')) {
+                            processJson(e.target.result);
+                        }
+                    } catch (error) {
+                        showError('文件处理错误: ' + error.message);
+                    }
+                };
+                
+                reader.onerror = function() {
+                    showError('文件读取错误');
+                };
+                
+                // 根据文件类型读取
+                if (fileName.endsWith('.json')) {
+                    reader.readAsText(file, 'UTF-8');
+                } else {
+                    reader.readAsText(file, 'UTF-8');
+                }
+            }
+            
+            // 处理CSV文件
+            function processCsv(csvText) {
+                try {
+                    const rows = parseCSV(csvText);
+                    if (rows.length === 0) {
+                        showError('CSV文件为空或格式不正确');
+                        return;
+                    }
+                    
+                    renderTable(rows);
+                    tableContainer.style.display = 'block';
+                    hideError();
+                } catch (error) {
+                    showError('CSV解析错误: ' + error.message);
+                }
+            }
+            
+            // 处理JSON文件
+            function processJson(jsonText) {
+                try {
+                    const data = JSON.parse(jsonText);
+                    let rows = [];
+                    
+                    if (Array.isArray(data)) {
+                        // 如果是数组，每一项作为一行
+                        if (data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+                            // 获取所有可能的键
+                            const allKeys = new Set();
+                            data.forEach(item => {
+                                Object.keys(item).forEach(key => allKeys.add(key));
+                            });
+                            
+                            const headers = Array.from(allKeys);
+                            rows.push(headers);
+                            
+                            data.forEach(item => {
+                                const row = headers.map(key => item[key] !== undefined ? item[key] : '');
+                                rows.push(row);
+                            });
+                        } else {
+                            // 如果数组元素不是对象，直接显示
+                            rows.push(['Value']);
+                            data.forEach(item => {
+                                rows.push([item]);
+                            });
+                        }
+                    } else if (typeof data === 'object' && data !== null) {
+                        // 如果是对象，显示键值对
+                        rows.push(['Key', 'Value']);
+                        Object.entries(data).forEach(([key, value]) => {
+                            rows.push([key, value]);
+                        });
+                    } else {
+                        showError('JSON格式不支持');
+                        return;
+                    }
+                    
+                    renderTable(rows);
+                    tableContainer.style.display = 'block';
+                    hideError();
+                } catch (error) {
+                    showError('JSON解析错误: ' + error.message);
+                }
+            }
+            
+            // 解析CSV
+            function parseCSV(csv) {
+                const lines = csv.split(/\r?\n/);
+                const result = [];
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line) {
+                        const row = parseCSVLine(line);
+                        result.push(row);
+                    }
+                }
+                
+                return result;
+            }
+            
+            // 解析CSV行
+            function parseCSVLine(line) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    const nextChar = i < line.length - 1 ? line[i + 1] : '';
+                    
+                    if (char === '"' && !inQuotes) {
+                        inQuotes = true;
+                    } else if (char === '"' && nextChar === '"') {
+                        current += '"';
+                        i++; // 跳过下一个引号
+                    } else if (char === '"' && inQuotes) {
+                        inQuotes = false;
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                
+                result.push(current.trim());
+                return result;
+            }
+            
+            // 渲染表格
+            function renderTable(rows) {
+                // 清空现有内容
+                tableHeader.innerHTML = '';
+                tableBody.innerHTML = '';
+                
+                if (rows.length === 0) return;
+                
+                // 创建表头
+                const headerRow = document.createElement('tr');
+                const headers = rows[0];
+                
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header || ' ';
+                    headerRow.appendChild(th);
+                });
+                
+                tableHeader.appendChild(headerRow);
+                
+                // 创建表体
+                for (let i = 1; i < rows.length; i++) {
+                    const row = document.createElement('tr');
+                    const rowData = rows[i];
+                    
+                    rowData.forEach(cellData => {
+                        const td = document.createElement('td');
+                        
+                        // 检查是否为JSON格式
+                        if (isJsonString(cellData)) {
+                            try {
+                                const jsonObj = JSON.parse(cellData);
+                                const formattedJsonStr = JSON.stringify(jsonObj, null, 2);
+                                
+                                const previewDiv = document.createElement('div');
+                                previewDiv.className = 'json-preview';
+                                previewDiv.textContent = formattedJsonStr.substring(0, 100) + (formattedJsonStr.length > 100 ? '...' : '');
+                                
+                                // 保存原始JSON字符串到元素属性，以便在点击时使用
+                                previewDiv.dataset.fullJson = formattedJsonStr;
+                                
+                                // 点击显示完整格式化JSON
+                                previewDiv.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    formattedJson.textContent = formattedJsonStr;
+                                    jsonModal.style.display = 'flex';
+                                });
+                                
+                                td.appendChild(previewDiv);
+                            } catch (e) {
+                                td.textContent = cellData;
+                            }
+                        } else {
+                            // 检查是否包含换行符，如果有则使用pre标签保持格式
+                            if (typeof cellData === 'string' && cellData.includes('\n')) {
+                                const pre = document.createElement('pre');
+                                pre.textContent = cellData;
+                                pre.style.margin = '0';
+                                pre.style.whiteSpace = 'pre-wrap';
+                                pre.style.wordBreak = 'break-word';
+                                td.appendChild(pre);
+                            } else {
+                                td.textContent = cellData;
+                            }
+                        }
+                        
+                        row.appendChild(td);
+                    });
+                    
+                    tableBody.appendChild(row);
+                }
+            }
+            
+            // 检查是否为JSON字符串
+            function isJsonString(str) {
+                if (typeof str !== 'string') return false;
+                
+                try {
+                    JSON.parse(str);
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            }
+            
+            // 显示错误信息
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            }
+            
+            // 隐藏错误信息
+            function hideError() {
+                errorMessage.style.display = 'none';
+            }
+            
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        });
+    </script>
+</body>
+</html>

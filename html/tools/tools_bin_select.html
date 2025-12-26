@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>位运算多选工具</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        select {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            background-color: white;
+        }
+        
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f4fc;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .result-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+        
+        .selected-options {
+            margin-top: 10px;
+        }
+        
+        .option-item {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        .error {
+            color: #e74c3c;
+            background-color: #fdeded;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .instructions {
+            background-color: #fff8e1;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f39c12;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <h2>数据配置</h2>
+            <div class="instructions">
+                <h3>使用说明：</h3>
+                <ul>
+                    <li>左侧输入键值对数据，格式为 {key: value}</li>
+                    <li>值必须是2的幂次（1, 2, 4, 8, 16...）</li>
+                    <li>修改后点击"更新选项"重新生成多选框</li>
+                    <li>按住Ctrl键可多选</li>
+                </ul>
+            </div>
+            <textarea id="dataInput" placeholder="请输入数据，例如：{android: 1, ios: 2, aaa: 4, bbb: 8, ccc: 16, harmony: 64, miniprogrammer: 128}">{android: 1,ios: 2,aaa: 4,bbb: 8,ccc: 16,harmony: 64,miniprogrammer: 128}</textarea>
+            <button id="updateBtn" class="btn">更新选项</button>
+        </div>
+        
+        <div class="panel">
+            <h2>多选操作</h2>
+            <select id="multiSelect" multiple>
+                <!-- Options will be populated by JavaScript -->
+            </select>
+            <button id="calculateBtn" class="btn">计算结果</button>
+            
+            <div id="result" class="result" style="display: none;">
+                <h3>计算结果</h3>
+                <div class="result-value">最终值: <span id="finalValue">0</span></div>
+                <div class="selected-options">
+                    <strong>选中的选项:</strong>
+                    <div id="selectedOptionsList"></div>
+                </div>
+            </div>
+            
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // 默认数据
+        let optionData = {
+            android: 1,
+            ios: 2,
+            aaa: 4,
+            bbb: 8,
+            ccc: 16,
+            harmony: 64,
+            miniprogrammer: 128
+        };
+        
+        // DOM元素
+        const dataInput = document.getElementById('dataInput');
+        const multiSelect = document.getElementById('multiSelect');
+        const updateBtn = document.getElementById('updateBtn');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const resultDiv = document.getElementById('result');
+        const finalValueSpan = document.getElementById('finalValue');
+        const selectedOptionsList = document.getElementById('selectedOptionsList');
+        const errorDiv = document.getElementById('error');
+        
+        // 解析输入数据
+        function parseData() {
+            try {
+                // 预处理输入：修复缺少逗号和冒号的问题
+                let input = dataInput.value.trim();
+                
+                // 简单的JSON修复：确保正确的格式
+                input = input.replace(/\s*([a-zA-Z0-9_]+)\s*:\s*(\d+)\s*(?=[,}])/g, '"$1":$2');
+                
+                // 移除可能的语法错误
+                input = input.replace(/,(\s*[}\]])/g, '$1'); // 移除末尾多余的逗号
+                
+                // 尝试解析JSON
+                const parsed = JSON.parse(input);
+                
+                // 验证所有值都是数字
+                for (const [key, value] of Object.entries(parsed)) {
+                    if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+                        throw new Error(`值 "${value}" 不是正整数: ${key}`);
+                    }
+                    
+                    // 检查是否为2的幂次
+                    if ((value & (value - 1)) !== 0) {
+                        console.warn(`值 ${value} (对应 ${key}) 不是2的幂次，但仍可使用`);
+                    }
+                }
+                
+                return parsed;
+            } catch (e) {
+                throw new Error(`数据格式错误: ${e.message}`);
+            }
+        }
+        
+        // 更新选择框选项
+        function updateOptions() {
+            try {
+                optionData = parseData();
+                
+                // 清空现有选项
+                multiSelect.innerHTML = '';
+                
+                // 添加新选项
+                for (const [key, value] of Object.entries(optionData)) {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = `${key} (${value})`;
+                    multiSelect.appendChild(option);
+                }
+                
+                // 隐藏错误信息
+                errorDiv.style.display = 'none';
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+        
+        // 计算结果
+        function calculateResult() {
+            try {
+                const selectedOptions = multiSelect.selectedOptions;
+                let totalValue = 0;
+                const selectedItems = [];
+                
+                for (const option of selectedOptions) {
+                    const value = parseInt(option.value);
+                    totalValue |= value; // 位或运算
+                    selectedItems.push({
+                        key: option.text.split(' ')[0],
+                        value: value
+                    });
+                }
+                
+                // 显示结果
+                finalValueSpan.textContent = totalValue;
+                
+                // 显示选中的选项
+                selectedOptionsList.innerHTML = '';
+                if (selectedItems.length > 0) {
+                    selectedItems.forEach(item => {
+                        const span = document.createElement('span');
+                        span.className = 'option-item';
+                        span.textContent = `${item.key} (${item.value})`;
+                        selectedOptionsList.appendChild(span);
+                    });
+                } else {
+                    selectedOptionsList.textContent = '未选择任何选项';
+                }
+                
+                resultDiv.style.display = 'block';
+                errorDiv.style.display = 'none';
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+        
+        // 显示错误信息
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            resultDiv.style.display = 'none';
+        }
+        
+        // 事件监听器
+        updateBtn.addEventListener('click', updateOptions);
+        calculateBtn.addEventListener('click', calculateResult);
+        
+        // 页面加载时初始化
+        window.addEventListener('load', () => {
+            updateOptions();
+        });
+        
+        // 提供反向解析功能（可选）
+        function findSelectedOptionsFromValue(value) {
+            const selected = [];
+            for (const [key, bitValue] of Object.entries(optionData)) {
+                if (value & bitValue) {
+                    selected.push({key, value: bitValue});
+                }
+            }
+            return selected;
+        }
+    </script>
+</body>
+</html>
