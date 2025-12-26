@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excel/CSV/JSON 文件查看器</title>
     <script src="lib/xlsx.full.min.js"></script>
+    <!-- <script src="/admin/public/js_lib/xlsx.full.min.js"></script> -->
     <style>
         * {
             margin: 0;
@@ -17,11 +18,17 @@
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             padding: 20px;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         
         .container {
             max-width: 100%;
             margin: 0 auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* Allow it to shrink */
         }
         
         header {
@@ -29,6 +36,7 @@
             margin-bottom: 30px;
             padding: 20px;
             transition: all 0.3s ease;
+            flex-shrink: 0;
         }
         
         header.hidden {
@@ -40,6 +48,23 @@
         header.hidden .subtitle {
             font-size: 1rem;
             margin-bottom: 5px;
+        }
+        
+        .file-info-display {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 0.9rem;
+            color: #2c3e50;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 8px 15px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 999;
+            max-width: 500px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         
         h1 {
@@ -65,6 +90,7 @@
             transition: all 0.3s ease;
             cursor: pointer;
             display: block;
+            flex-shrink: 0;
         }
         
         .upload-area.hidden {
@@ -121,6 +147,9 @@
             overflow: auto;
             margin-top: 20px;
             display: none;
+            flex: 1;
+            min-height: 0; /* Allow it to shrink */
+            position: relative;
             max-height: 85vh;
         }
         
@@ -140,6 +169,26 @@
             top: 0;
             z-index: 10;
             min-width: 150px; /* 设置最小列宽 */
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        th:hover {
+            background-color: #2980b9;
+        }
+        
+        th::after {
+            content: " ↕";
+            font-size: 0.8em;
+            margin-left: 5px;
+        }
+        
+        th.asc::after {
+            content: " ↑";
+        }
+        
+        th.desc::after {
+            content: " ↓";
         }
         
         td {
@@ -301,6 +350,14 @@
                 font-size: 2rem;
             }
             
+            .file-info-display {
+                left: 10px;
+                right: 70px; /* 留出重新上传按钮的空间 */
+                max-width: calc(100% - 80px);
+                font-size: 0.8rem;
+                padding: 6px 10px;
+            }
+            
             .upload-area {
                 padding: 20px;
             }
@@ -362,6 +419,8 @@
         <div class="reupload-tooltip">重新上传文件</div>
         <button class="reupload-btn" id="reuploadBtn">🔄</button>
     </div>
+    
+    <div class="file-info-display" id="fileInfoDisplay">未选择文件</div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -378,6 +437,7 @@
             const closeModal = document.querySelector('.close-btn');
             const reuploadBtn = document.getElementById('reuploadBtn');
             const mainHeader = document.getElementById('mainHeader');
+            const fileInfoDisplay = document.getElementById('fileInfoDisplay');
             
             // 点击选择文件
             browseBtn.addEventListener('click', () => {
@@ -434,6 +494,8 @@
                 fileInput.value = '';
                 // 隐藏表格容器
                 tableContainer.style.display = 'none';
+                // 重置文件显示
+                fileInfoDisplay.textContent = '未选择文件';
             });
             
             // 处理文件
@@ -447,6 +509,9 @@
                     showError('请上传 Excel (.xlsx, .xls)、CSV 或 JSON 文件');
                     return;
                 }
+                
+                // 更新当前文件显示
+                fileInfoDisplay.textContent = `${file.name} (${formatFileSize(file.size)})`;
                 
                 fileInfo.textContent = `已选择: ${file.name} (${formatFileSize(file.size)})`;
                 
@@ -656,9 +721,16 @@
                 const headerRow = document.createElement('tr');
                 const headers = rows[0];
                 
-                headers.forEach(header => {
+                headers.forEach((header, index) => {
                     const th = document.createElement('th');
                     th.textContent = header || ' ';
+                    th.dataset.columnIndex = index;
+                    
+                    // 添加排序功能
+                    th.addEventListener('click', () => {
+                        sortTable(index, th);
+                    });
+                    
                     headerRow.appendChild(th);
                 });
                 
@@ -717,6 +789,53 @@
                 }
             }
             
+            // 排序功能
+            function sortTable(columnIndex, headerElement) {
+                const rows = Array.from(tableBody.rows);
+                const isAscending = headerElement.classList.contains('asc');
+                
+                // 重置所有表头的排序状态
+                const allHeaders = tableHeader.rows[0].cells;
+                for (let i = 0; i < allHeaders.length; i++) {
+                    allHeaders[i].classList.remove('asc', 'desc');
+                }
+                
+                // 设置当前列的排序状态
+                if (isAscending) {
+                    headerElement.classList.add('desc');
+                } else {
+                    headerElement.classList.add('asc');
+                }
+                
+                // 排序数据
+                rows.sort((a, b) => {
+                    // 获取对应列的单元格数据
+                    const aText = a.cells[columnIndex] ? a.cells[columnIndex].textContent.trim() : '';
+                    const bText = b.cells[columnIndex] ? b.cells[columnIndex].textContent.trim() : '';
+                    
+                    // 按数字比较
+                    if (isNumeric(aText) && isNumeric(bText)) {
+                        // 尝试转换为数字进行比较
+                        const aNum = parseFloat(aText);
+                        const bNum = parseFloat(bText);
+                        
+                        if (!isNaN(aNum) || !isNaN(bNum)) {
+                            return isAscending ? aNum - bNum : bNum - aNum;
+                        }
+                    }
+                    
+                    // 按字符串比较
+                    if (isAscending) {
+                        return aText.localeCompare(bText);
+                    } else {
+                        return bText.localeCompare(aText);
+                    }
+                });
+                
+                // 重新添加排序后的行
+                rows.forEach(row => tableBody.appendChild(row));
+            }
+            
             // 检查是否为JSON字符串
             function isJsonString(str) {
                 if (typeof str !== 'string') return false;
@@ -747,6 +866,10 @@
                 const sizes = ['Bytes', 'KB', 'MB', 'GB'];
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function isNumeric(value) {
+                return /^-?\d+$/.test(value) || /^-?\d*\.\d+$/.test(value); // 匹配整数或浮点数
             }
         });
     </script>
