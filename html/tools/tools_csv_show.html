@@ -28,17 +28,31 @@
             text-align: center;
             margin-bottom: 30px;
             padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        header.hidden {
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+        
+        header.hidden h1,
+        header.hidden .subtitle {
+            font-size: 1rem;
+            margin-bottom: 5px;
         }
         
         h1 {
             color: #2c3e50;
             margin-bottom: 10px;
             font-size: 2.5rem;
+            transition: all 0.3s ease;
         }
         
         .subtitle {
             color: #7f8c8d;
             font-size: 1.2rem;
+            transition: all 0.3s ease;
         }
         
         .upload-area {
@@ -50,6 +64,11 @@
             margin-bottom: 30px;
             transition: all 0.3s ease;
             cursor: pointer;
+            display: block;
+        }
+        
+        .upload-area.hidden {
+            display: none;
         }
         
         .upload-area:hover, .upload-area.dragover {
@@ -102,7 +121,7 @@
             overflow: auto;
             margin-top: 20px;
             display: none;
-            max-height: 70vh;
+            max-height: 85vh;
         }
         
         table {
@@ -147,8 +166,9 @@
             font-size: 0.8rem;
             max-height: 100px;
             overflow: auto;
-            white-space: pre-wrap;
+            white-space: pre-wrap; /* 强制换行 */
             cursor: pointer;
+            word-break: break-all; /* 强制长单词换行 */
         }
         
         .json-modal {
@@ -191,7 +211,9 @@
         
         .json-formatted {
             font-family: monospace;
-            white-space: pre;
+            white-space: pre-wrap; /* 强制换行 */
+            word-wrap: break-word; /* 强制长单词换行 */
+            word-break: break-all; /* 强制长单词换行 */
             background-color: #2c3e50;
             color: #ecf0f1;
             padding: 15px;
@@ -212,6 +234,62 @@
             font-weight: bold;
             color: #2c3e50;
             margin-top: 10px;
+        }
+        
+        .reupload-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .reupload-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .reupload-btn:hover {
+            background-color: #2980b9;
+            transform: scale(1.1);
+        }
+        
+        .reupload-tooltip {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #2c3e50;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .reupload-tooltip::after {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            right: 20px;
+            margin-right: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent #2c3e50 transparent;
+        }
+        
+        .reupload-container:hover .reupload-tooltip {
+            opacity: 1;
+            visibility: visible;
+            margin-top: 5px;
         }
         
         @media (max-width: 768px) {
@@ -236,12 +314,17 @@
                 padding: 8px;
                 min-width: 100px;
             }
+            
+            .reupload-btn {
+                padding: 12px 16px;
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
+        <header id="mainHeader">
             <h1>Excel/CSV/JSON 文件查看器</h1>
             <p class="subtitle">上传Excel、CSV或JSON文件并查看内容，支持JSON格式单元格的格式化显示</p>
         </header>
@@ -274,6 +357,11 @@
             <div class="json-formatted" id="formattedJson"></div>
         </div>
     </div>
+    
+    <div class="reupload-container">
+        <div class="reupload-tooltip">重新上传文件</div>
+        <button class="reupload-btn" id="reuploadBtn">🔄</button>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -288,6 +376,8 @@
             const jsonModal = document.getElementById('jsonModal');
             const formattedJson = document.getElementById('formattedJson');
             const closeModal = document.querySelector('.close-btn');
+            const reuploadBtn = document.getElementById('reuploadBtn');
+            const mainHeader = document.getElementById('mainHeader');
             
             // 点击选择文件
             browseBtn.addEventListener('click', () => {
@@ -330,6 +420,20 @@
                 if (e.target === jsonModal) {
                     jsonModal.style.display = 'none';
                 }
+            });
+            
+            // 重新上传按钮事件
+            reuploadBtn.addEventListener('click', () => {
+                // 显示上传区域
+                dropArea.classList.remove('hidden');
+                // 显示标题区域
+                mainHeader.classList.remove('hidden');
+                // 滚动到顶部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                // 清空文件输入
+                fileInput.value = '';
+                // 隐藏表格容器
+                tableContainer.style.display = 'none';
             });
             
             // 处理文件
@@ -411,6 +515,10 @@
                         renderTable(jsonData);
                     }
                     
+                    // 隐藏上传区域
+                    dropArea.classList.add('hidden');
+                    // 隐藏标题区域
+                    mainHeader.classList.add('hidden');
                     tableContainer.style.display = 'block';
                     hideError();
                 } catch (error) {
@@ -428,6 +536,10 @@
                     }
                     
                     renderTable(rows);
+                    // 隐藏上传区域
+                    dropArea.classList.add('hidden');
+                    // 隐藏标题区域
+                    mainHeader.classList.add('hidden');
                     tableContainer.style.display = 'block';
                     hideError();
                 } catch (error) {
@@ -476,6 +588,10 @@
                     }
                     
                     renderTable(rows);
+                    // 隐藏上传区域
+                    dropArea.classList.add('hidden');
+                    // 隐藏标题区域
+                    mainHeader.classList.add('hidden');
                     tableContainer.style.display = 'block';
                     hideError();
                 } catch (error) {
