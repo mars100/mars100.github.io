@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV/JSON 文件查看器</title>
+    <title>Excel/CSV/JSON 文件查看器</title>
+    <script src="lib/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -241,15 +242,15 @@
 <body>
     <div class="container">
         <header>
-            <h1>CSV/JSON 文件查看器</h1>
-            <p class="subtitle">上传CSV文件并查看内容，支持JSON格式单元格的格式化显示</p>
+            <h1>Excel/CSV/JSON 文件查看器</h1>
+            <p class="subtitle">上传Excel、CSV或JSON文件并查看内容，支持JSON格式单元格的格式化显示</p>
         </header>
         
         <div class="upload-area" id="dropArea">
             <div class="upload-icon">📁</div>
             <p class="upload-text">拖拽文件到此处或点击选择文件</p>
-            <p>支持 CSV 和 JSON 文件</p>
-            <input type="file" id="fileInput" accept=".csv,.json" style="display: none;">
+            <p>支持 Excel (.xlsx, .xls)、CSV 和 JSON 文件</p>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.json" style="display: none;">
             <button class="btn" id="browseBtn">选择文件</button>
             <div class="file-info" id="fileInfo"></div>
         </div>
@@ -335,8 +336,11 @@
             function handleFile(file) {
                 // 检查文件类型
                 const fileName = file.name.toLowerCase();
-                if (!fileName.endsWith('.csv') && !fileName.endsWith('.json')) {
-                    showError('请上传 CSV 或 JSON 文件');
+                if (!fileName.endsWith('.csv') && 
+                    !fileName.endsWith('.json') && 
+                    !fileName.endsWith('.xlsx') && 
+                    !fileName.endsWith('.xls')) {
+                    showError('请上传 Excel (.xlsx, .xls)、CSV 或 JSON 文件');
                     return;
                 }
                 
@@ -350,6 +354,8 @@
                             processCsv(e.target.result);
                         } else if (fileName.endsWith('.json')) {
                             processJson(e.target.result);
+                        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                            processExcel(e.target.result, fileName);
                         }
                     } catch (error) {
                         showError('文件处理错误: ' + error.message);
@@ -363,8 +369,52 @@
                 // 根据文件类型读取
                 if (fileName.endsWith('.json')) {
                     reader.readAsText(file, 'UTF-8');
+                } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                    // Excel文件需要以二进制方式读取
+                    reader.readAsArrayBuffer(file);
                 } else {
                     reader.readAsText(file, 'UTF-8');
+                }
+            }
+            
+            // 处理Excel文件
+            function processExcel(data, fileName) {
+                try {
+                    // 使用SheetJS解析Excel文件
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // 获取第一个工作表
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // 将工作表转换为JSON数组
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    // 如果JSON数据为空，尝试以不同方式读取
+                    if (jsonData.length === 0) {
+                        // 尝试以A1单元格开始读取
+                        const range = XLSX.utils.decode_range(worksheet['!ref']);
+                        const sheetData = [];
+                        
+                        for (let row = range.s.r; row <= range.e.r; row++) {
+                            const rowData = [];
+                            for (let col = range.s.c; col <= range.e.c; col++) {
+                                const cellAddress = XLSX.utils.encode_cell({r: row, c: col});
+                                const cell = worksheet[cellAddress];
+                                rowData.push(cell ? cell.v : '');
+                            }
+                            sheetData.push(rowData);
+                        }
+                        
+                        renderTable(sheetData);
+                    } else {
+                        renderTable(jsonData);
+                    }
+                    
+                    tableContainer.style.display = 'block';
+                    hideError();
+                } catch (error) {
+                    showError('Excel文件解析错误: ' + error.message);
                 }
             }
             
