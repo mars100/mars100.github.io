@@ -3,20 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hash Algorithm Tool with CryptoJS</title>
+    <title>Hash Algorithm Tool</title>
+    <!-- Include CryptoJS library -->
+    <script src="lib/crypto-js.min.js"></script>
+    <!-- <script src="/admin/public/js_lib/crypto-js.min.js"></script> -->
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             max-width: 900px;
             margin: 0 auto;
-            padding: 30px;
+            padding: 0px;
             background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
             color: #333;
         }
         h1 {
             text-align: center;
             color: #2c3e50;
-            margin-bottom: 30px;
+            margin-bottom: 15px;  /* Reduced from 30px to make it more compact */
+            margin-top: 5px;      /* Reduced from 10px to 5px for less top space */
+            font-size: 24px;      /* Slightly reduced font size if needed */
         }
         .container {
             background: white;
@@ -58,6 +63,27 @@
         button:hover {
             background: #2980b9;
         }
+        /* Updated styles for copy button */
+        .copy-btn {
+            background: #27ae60;  /* Green color */
+            color: white;
+            border: none;
+            padding: 10px 8px;    /* Increased height (10px vertical), decreased width (8px horizontal) */
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+            transition: background 0.3s;
+            min-width: 50px;      /* Reduced minimum width */
+            width: auto;
+            height: 50px;
+        }
+        .copy-btn:hover {
+            background: #219653;  /* Darker green on hover */
+        }
+        .copy-btn.copied {
+            background: #2ecc71;  /* Different green when copied */
+        }
         .hash-result {
             margin-top: 20px;
         }
@@ -73,14 +99,22 @@
             margin-bottom: 5px;
             color: #2c3e50;
         }
+        .result-content {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
         .result-value {
             word-break: break-all;
-            font-family: monospace;
-            font-size: 14px;
+            font-family: 'Courier New', Consolas, Monaco, 'Ubuntu Mono', monospace;  /* Programming-friendly monospace fonts */
+            font-size: 18px;
             padding: 8px;
             background: #f1f9ff;
             border-radius: 3px;
             overflow-x: auto;
+            flex: 1;  /* This was taking all available space */
+            min-width: 650px;  /* Allows flex item to shrink below content size */
         }
         .algorithm {
             display: flex;
@@ -116,12 +150,17 @@
             font-size: 14px;
             color: #7f8c8d;
         }
+        /* Highlight for first 8 characters of hash */
+        .highlight-first-8 {
+            background-color: #ffeaa7;  /* Light yellow background */
+            font-weight: bold;
+            border-radius: 3px;
+            padding: 0 2px;
+        }
     </style>
-    <!-- Include CryptoJS library -->
-    <script src="lib/crypto-js.min.js"></script>
 </head>
 <body>
-    <h1>Hash Algorithm Tool with CryptoJS</h1>
+    <h1>Hash Algorithm Tool</h1>
     
     <div class="container">
         <div class="input-area">
@@ -193,18 +232,43 @@
             }
         }
 
-        // Add a result to the container
+        // Add a result to the container with a copy button and highlighted first 8 characters
         function addResult(algorithm, hash, description) {
             const resultItem = document.createElement('div');
             resultItem.className = 'result-item';
             
+            // Split the hash to highlight the first 8 characters
+            const first8 = hash.substring(0, 8);
+            const rest = hash.substring(8);
+            
             resultItem.innerHTML = `
                 <div class="result-label">${algorithm} Hash</div>
-                <div class="result-value">${hash}</div>
+                <div class="result-content">
+                    <div class="result-value"><span class="highlight-first-8">${first8}</span>${rest}</div>
+                    <button class="copy-btn" onclick="copyToClipboard('${hash}', this)">Copy</button>
+                </div>
                 <div class="hash-info">${description}</div>
             `;
             
             document.getElementById('hashResults').appendChild(resultItem);
+        }
+
+        // Copy hash to clipboard
+        function copyToClipboard(hashValue, element) {
+            navigator.clipboard.writeText(hashValue).then(function() {
+                // Visual feedback
+                const originalText = element.textContent;
+                element.textContent = 'Copied!';
+                element.classList.add('copied');
+                
+                setTimeout(function() {
+                    element.textContent = originalText;
+                    element.classList.remove('copied');
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy to clipboard');
+            });
         }
 
         // Clear results
