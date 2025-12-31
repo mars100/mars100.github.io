@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hash Algorithm Tool with CryptoJS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        .input-area {
+            margin-bottom: 25px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        .btn-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            flex: 1;
+            min-width: 120px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .hash-result {
+            margin-top: 20px;
+        }
+        .result-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f9f9f9;
+            border-left: 4px solid #3498db;
+        }
+        .result-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        .result-value {
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 8px;
+            background: #f1f9ff;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+        .algorithm {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+        .algorithm input {
+            margin-right: 5px;
+        }
+        .algorithm label {
+            font-size: 14px;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .algorithm-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .hash-info {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        .library-info {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+    </style>
+    <!-- Include CryptoJS library -->
+    <script src="lib/crypto-js.min.js"></script>
+</head>
+<body>
+    <h1>Hash Algorithm Tool with CryptoJS</h1>
+    
+    <div class="container">
+        <div class="input-area">
+            <label for="inputText"><strong>Input Text:</strong></label>
+            <textarea id="inputText" placeholder="Enter text to hash...">123456</textarea>
+        </div>
+        
+        <div class="controls">
+            <div class="algorithm-selector">
+                <div class="algorithm">
+                    <input type="checkbox" id="md5" checked>
+                    <label for="md5">MD5 (128-bit)</label>
+                </div>
+                <div class="algorithm">
+                    <input type="checkbox" id="sha1" checked>
+                    <label for="sha1">SHA-1 (160-bit)</label>
+                </div>
+                <div class="algorithm">
+                    <input type="checkbox" id="sha256" checked>
+                    <label for="sha256">SHA-256 (256-bit)</label>
+                </div>
+                <div class="algorithm">
+                    <input type="checkbox" id="sha512" checked>
+                    <label for="sha512">SHA-512 (512-bit)</label>
+                </div>
+            </div>
+            
+            <div class="btn-container">
+                <button id="calculateBtn">Calculate Hash</button>
+                <button id="clearBtn">Clear Results</button>
+            </div>
+        </div>
+        
+        <div class="hash-result" id="hashResults">
+            <!-- Results will be displayed here -->
+        </div>
+    </div>
+    
+    <div class="library-info">
+        Using CryptoJS library (v4.1.1) for hash calculations
+    </div>
+
+    <script>
+        // Calculate and display hash values using CryptoJS
+        function calculateHashes() {
+            const inputText = document.getElementById('inputText').value;
+            const resultsContainer = document.getElementById('hashResults');
+            
+            resultsContainer.innerHTML = '';
+            
+            if (document.getElementById('md5').checked) {
+                const md5Result = CryptoJS.MD5(inputText).toString();
+                addResult('MD5', md5Result, '128-bit hash algorithm');
+            }
+            
+            if (document.getElementById('sha1').checked) {
+                const sha1Result = CryptoJS.SHA1(inputText).toString();
+                addResult('SHA-1', sha1Result, '160-bit hash algorithm');
+            }
+            
+            if (document.getElementById('sha256').checked) {
+                const sha256Result = CryptoJS.SHA256(inputText).toString();
+                addResult('SHA-256', sha256Result, '256-bit hash algorithm');
+            }
+            
+            if (document.getElementById('sha512').checked) {
+                const sha512Result = CryptoJS.SHA512(inputText).toString();
+                addResult('SHA-512', sha512Result, '512-bit hash algorithm');
+            }
+        }
+
+        // Add a result to the container
+        function addResult(algorithm, hash, description) {
+            const resultItem = document.createElement('div');
+            resultItem.className = 'result-item';
+            
+            resultItem.innerHTML = `
+                <div class="result-label">${algorithm} Hash</div>
+                <div class="result-value">${hash}</div>
+                <div class="hash-info">${description}</div>
+            `;
+            
+            document.getElementById('hashResults').appendChild(resultItem);
+        }
+
+        // Clear results
+        function clearResults() {
+            document.getElementById('hashResults').innerHTML = '';
+        }
+
+        // Event listeners
+        document.getElementById('calculateBtn').addEventListener('click', calculateHashes);
+        document.getElementById('clearBtn').addEventListener('click', clearResults);
+
+        // Initialize with example
+        window.onload = function() {
+            calculateHashes();
+        };
+    </script>
+</body>
+</html>
