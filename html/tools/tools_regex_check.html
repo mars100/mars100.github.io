@@ -51,6 +51,22 @@
         border-color: #667eea;
     }
     input.invalid { border-color: #e74c3c; }
+    textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: border-color 0.3s;
+        font-family: "Consolas", "Courier New", monospace;
+        resize: vertical;
+        min-height: 120px;
+        line-height: 1.5;
+    }
+    textarea:focus {
+        outline: none;
+        border-color: #667eea;
+    }
     .options {
         display: flex;
         gap: 16px;
@@ -98,6 +114,52 @@
         display: none;
     }
     .detail.show { display: block; }
+    .summary-line {
+        font-weight: 600;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed #ccc;
+        color: #333;
+    }
+    .line-result {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        font-family: "Consolas", monospace;
+        font-size: 13px;
+        line-height: 1.4;
+    }
+    .line-result.pass-row { background: #d4edda; }
+    .line-result.fail-row { background: #f8d7da; }
+    .line-result .ln {
+        color: #999;
+        min-width: 36px;
+        text-align: right;
+        flex-shrink: 0;
+    }
+    .line-result .ls {
+        flex-shrink: 0;
+        font-weight: bold;
+    }
+    .line-result.pass-row .ls { color: #155724; }
+    .line-result.fail-row .ls { color: #721c24; }
+    .line-result .lt {
+        flex: 1;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: #333;
+    }
+    .line-result .lm {
+        flex-shrink: 0;
+        color: #666;
+        font-size: 12px;
+        max-width: 40%;
+        text-align: right;
+        word-break: break-all;
+    }
     .examples {
         margin-top: 24px;
         padding-top: 20px;
@@ -142,8 +204,8 @@
     </div>
 
     <div class="group">
-        <label for="value">测试值:</label>
-        <input type="text" id="value" placeholder="输入要测试的值" autocomplete="off">
+        <label for="value">测试值 (支持多行):</label>
+        <textarea id="value" placeholder="输入要测试的值，支持多行粘贴" spellcheck="false"></textarea>
     </div>
 
     <div id="result" class="result idle">等待输入...</div>
@@ -156,6 +218,7 @@
         <button class="example-btn" onclick="fillExample('^\\w+@\\w+\\.\\w+$', 'test@mail.com', 'g')">邮箱</button>
         <button class="example-btn" onclick="fillExample('^1[3-9]\\d{9}$', '13812345678', '')">手机号</button>
         <button class="example-btn" onclick="fillExample('^https?://.+', 'https://example.com', 'i')">URL</button>
+        <button class="example-btn" onclick="fillMultiLine()">多行示例</button>
     </div>
 </div>
 
@@ -197,30 +260,84 @@
             return;
         }
 
+        let regex;
         try {
-            const regex = new RegExp(pattern, flags);
-            const match = regex.test(value);
-
-            if (match) {
-                resultDiv.className = 'result pass';
-                resultDiv.textContent = '✅ 通过匹配';
-
-                // 显示匹配详情
-                const allMatches = value.match(regex);
-                if (allMatches) {
-                    detailDiv.classList.add('show');
-                    detailDiv.innerHTML = '<strong>匹配内容:</strong> ' +
-                        allMatches.map(m => escapeHtml(m)).join(', ');
-                }
-            } else {
-                resultDiv.className = 'result fail';
-                resultDiv.textContent = '❌ 未通过匹配';
-            }
+            regex = new RegExp(pattern, flags);
         } catch (e) {
             resultDiv.className = 'result error';
             resultDiv.textContent = '⚠️ 正则表达式语法错误';
             detailDiv.classList.add('show');
             detailDiv.innerHTML = '<strong>错误信息:</strong> ' + escapeHtml(e.message);
+            return;
+        }
+
+        const lines = value.split('\n');
+        const multiLineMode = lines.length > 1;
+
+        // 多行场景：逐行比对
+        if (multiLineMode) {
+            let passCount = 0;
+            let failCount = 0;
+            const rowsHtml = [];
+
+            lines.forEach((line, idx) => {
+                // 每行重新创建（避免 g 标志导致 lastIndex 干扰）
+                const lineRegex = new RegExp(pattern, flags);
+                const matched = lineRegex.test(line);
+                const rowClass = matched ? 'pass-row' : 'fail-row';
+                const statusIcon = matched ? '✅' : '❌';
+                const matches = matched ? (line.match(lineRegex) || []) : [];
+                const matchInfo = matches.length
+                    ? `<code>${escapeHtml(matches.join(', '))}</code>`
+                    : '';
+
+                if (matched) passCount++; else failCount++;
+
+                rowsHtml.push(
+                    `<div class="line-result ${rowClass}">` +
+                    `<span class="ln">${idx + 1}</span>` +
+                    `<span class="ls">${statusIcon}</span>` +
+                    `<span class="lt">${escapeHtml(line) || '(空行)'}</span>` +
+                    `<span class="lm">${matchInfo}</span>` +
+                    `</div>`
+                );
+            });
+
+            // 顶部汇总
+            resultDiv.className = failCount === 0 ? 'result pass' : (passCount === 0 ? 'result fail' : 'result error');
+            resultDiv.textContent = failCount === 0
+                ? `✅ 全部通过 (${passCount}/${lines.length})`
+                : passCount === 0
+                    ? `❌ 全部未通过 (0/${lines.length})`
+                    : `⚠️ 部分通过 (${passCount}/${lines.length})`;
+
+            detailDiv.classList.add('show');
+            detailDiv.innerHTML =
+                `<div class="summary-line">共 ${lines.length} 行，通过 ${passCount} 行，未通过 ${failCount} 行</div>` +
+                rowsHtml.join('');
+        } else {
+            // 单行场景：原有逻辑，增强匹配详情
+            const match = regex.test(value);
+            if (match) {
+                resultDiv.className = 'result pass';
+                resultDiv.textContent = '✅ 通过匹配';
+                const allMatches = value.match(regex);
+                if (allMatches) {
+                    detailDiv.classList.add('show');
+                    detailDiv.innerHTML =
+                        `<div class="summary-line">匹配内容 (${allMatches.length} 处)</div>` +
+                        allMatches.map((m, i) =>
+                            `<div class="line-result pass-row">` +
+                            `<span class="ln">${i + 1}</span>` +
+                            `<span class="ls">✅</span>` +
+                            `<span class="lt"><code>${escapeHtml(m)}</code></span>` +
+                            `</div>`
+                        ).join('');
+                }
+            } else {
+                resultDiv.className = 'result fail';
+                resultDiv.textContent = '❌ 未通过匹配';
+            }
         }
     }
 
@@ -236,6 +353,15 @@
         flagG.checked = flags.includes('g');
         flagI.checked = flags.includes('i');
         flagM.checked = flags.includes('m');
+        testRegex();
+    }
+
+    function fillMultiLine() {
+        regexInput.value = '^\\d+';
+        valueInput.value = '123 apple\n456 banana\n789 cherry';
+        flagG.checked = true;
+        flagI.checked = false;
+        flagM.checked = true;
         testRegex();
     }
 
