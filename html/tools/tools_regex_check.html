@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>正则表达式测试器</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+    .container {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+    }
+    h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 26px;
+    }
+    .group { margin-bottom: 20px; }
+    label {
+        display: block;
+        color: #555;
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    input[type="text"] {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: border-color 0.3s;
+        font-family: "Consolas", "Courier New", monospace;
+    }
+    input[type="text"]:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    input.invalid { border-color: #e74c3c; }
+    .options {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    .options label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: normal;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .options input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+    .result {
+        margin-top: 20px;
+        padding: 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        text-align: center;
+        font-size: 18px;
+        transition: all 0.3s;
+        min-height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .result.idle { background: #f5f5f5; color: #999; }
+    .result.pass { background: #d4edda; color: #155724; }
+    .result.fail { background: #f8d7da; color: #721c24; }
+    .result.error { background: #fff3cd; color: #856404; }
+    .detail {
+        margin-top: 12px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        font-family: "Consolas", monospace;
+        font-size: 13px;
+        color: #555;
+        word-break: break-all;
+        display: none;
+    }
+    .detail.show { display: block; }
+    .examples {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+    .examples-title {
+        font-size: 14px;
+        color: #888;
+        margin-bottom: 12px;
+    }
+    .example-btn {
+        display: inline-block;
+        padding: 6px 14px;
+        margin: 4px;
+        background: #f0f0f0;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 13px;
+        color: #555;
+        transition: all 0.2s;
+    }
+    .example-btn:hover {
+        background: #667eea;
+        color: #fff;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>🔍 正则表达式测试器</h1>
+
+    <div class="group">
+        <label for="regex">正则表达式 (不带 / 分隔符):</label>
+        <input type="text" id="regex" placeholder="例如: ^\d+$" autocomplete="off">
+    </div>
+
+    <div class="options">
+        <label><input type="checkbox" id="flagG"> g (全局)</label>
+        <label><input type="checkbox" id="flagI"> i (忽略大小写)</label>
+        <label><input type="checkbox" id="flagM"> m (多行)</label>
+    </div>
+
+    <div class="group">
+        <label for="value">测试值:</label>
+        <input type="text" id="value" placeholder="输入要测试的值" autocomplete="off">
+    </div>
+
+    <div id="result" class="result idle">等待输入...</div>
+    <div id="detail" class="detail"></div>
+
+    <div class="examples">
+        <div class="examples-title">快速示例:</div>
+        <button class="example-btn" onclick="fillExample('^\\d+$', '12345', 'gi')">数字</button>
+        <button class="example-btn" onclick="fillExample('^[a-zA-Z]+$', 'hello', 'i')">英文字母</button>
+        <button class="example-btn" onclick="fillExample('^\\w+@\\w+\\.\\w+$', 'test@mail.com', 'g')">邮箱</button>
+        <button class="example-btn" onclick="fillExample('^1[3-9]\\d{9}$', '13812345678', '')">手机号</button>
+        <button class="example-btn" onclick="fillExample('^https?://.+', 'https://example.com', 'i')">URL</button>
+    </div>
+</div>
+
+<script>
+    const regexInput = document.getElementById('regex');
+    const valueInput = document.getElementById('value');
+    const flagG = document.getElementById('flagG');
+    const flagI = document.getElementById('flagI');
+    const flagM = document.getElementById('flagM');
+    const resultDiv = document.getElementById('result');
+    const detailDiv = document.getElementById('detail');
+
+    function getFlags() {
+        let f = '';
+        if (flagG.checked) f += 'g';
+        if (flagI.checked) f += 'i';
+        if (flagM.checked) f += 'm';
+        return f;
+    }
+
+    function testRegex() {
+        const pattern = regexInput.value;
+        const value = valueInput.value;
+        const flags = getFlags();
+
+        resultDiv.className = 'result idle';
+        detailDiv.classList.remove('show');
+
+        if (!pattern && !value) {
+            resultDiv.textContent = '等待输入...';
+            return;
+        }
+        if (!pattern) {
+            resultDiv.textContent = '请输入正则表达式';
+            return;
+        }
+        if (!value) {
+            resultDiv.textContent = '请输入测试值';
+            return;
+        }
+
+        try {
+            const regex = new RegExp(pattern, flags);
+            const match = regex.test(value);
+
+            if (match) {
+                resultDiv.className = 'result pass';
+                resultDiv.textContent = '✅ 通过匹配';
+
+                // 显示匹配详情
+                const allMatches = value.match(regex);
+                if (allMatches) {
+                    detailDiv.classList.add('show');
+                    detailDiv.innerHTML = '<strong>匹配内容:</strong> ' +
+                        allMatches.map(m => escapeHtml(m)).join(', ');
+                }
+            } else {
+                resultDiv.className = 'result fail';
+                resultDiv.textContent = '❌ 未通过匹配';
+            }
+        } catch (e) {
+            resultDiv.className = 'result error';
+            resultDiv.textContent = '⚠️ 正则表达式语法错误';
+            detailDiv.classList.add('show');
+            detailDiv.innerHTML = '<strong>错误信息:</strong> ' + escapeHtml(e.message);
+        }
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function fillExample(pattern, value, flags) {
+        regexInput.value = pattern;
+        valueInput.value = value;
+        flagG.checked = flags.includes('g');
+        flagI.checked = flags.includes('i');
+        flagM.checked = flags.includes('m');
+        testRegex();
+    }
+
+    regexInput.addEventListener('input', testRegex);
+    valueInput.addEventListener('input', testRegex);
+    [flagG, flagI, flagM].forEach(el => el.addEventListener('change', testRegex));
+</script>
+</body>
+</html>
